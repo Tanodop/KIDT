@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36518.9 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KIDT", "KIDT\KIDT.csproj", "{2178C2B1-2199-4FB4-AA25-22965F4199DD}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2178C2B1-2199-4FB4-AA25-22965F4199DD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2178C2B1-2199-4FB4-AA25-22965F4199DD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2178C2B1-2199-4FB4-AA25-22965F4199DD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2178C2B1-2199-4FB4-AA25-22965F4199DD}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {4306F7FB-CD31-4F6E-9612-231D25A3376D}
+	EndGlobalSection
+EndGlobal
