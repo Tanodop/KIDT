@@ -1,3 +1,89 @@
-﻿@inherits LayoutComponentBase
+﻿@* Layout-Komponente:
+  - Stellt gemeinsame Struktur (Topbar, Sidebar, Footer) für alle Seiten bereit.
+  - @Body rendert jeweils die aktive Page-Komponente (Routing-Ziel).
+  - Enthält UI-State (Sidebar ein-/ausgeklappt) und Präsentations-Logik, keine Geschäftslogik.
+  - Accessibility: ARIA-Attribute zur Zustandskommunikation (aria-hidden, aria-expanded).
+  - Erweiterbar: Chats-Liste aktuell statisch; später durch Service/State-Container/Store ersetzbar. *@
 
-@Body
+@inherits LayoutComponentBase
+
+<div id="wrapper" class="@(isNavCollapsed ? "nav-collapsed" : "nav-expanded")">
+    <!-- Root-Wrapper; toggelt Layout-Klassen für Responsive Behavior -->
+    <header class="topbar">
+        <div class="title-area" role="banner">
+            <h1>KIDT</h1>
+        </div>
+    </header>
+
+    <div class="content">
+        <!-- Enthält Sidebar + dynamische Seiteninhalte -->
+        <nav id="sideNav" class="side-nav @(isNavCollapsed ? "collapsed" : "expanded")" aria-hidden="@isNavCollapsed">
+            <!-- Sidebar: Zustandsgesteuerte Sichtbarkeit + ARIA -->
+            <div class="icon-list">
+                <!-- Navigationseinträge (primäre Aktionen) -->
+                <button class="nav-toggle" @onclick="ToggleNav"
+                        aria-expanded="@(!isNavCollapsed)" aria-controls="sideNav"
+                        title="Navigation umschalten" aria-label="Navigation umschalten">
+                    <!-- State-Trigger für Sidebar Collapse -->
+                    <span class="menu-icon" aria-hidden="true"></span>
+                </button>
+                <NavLink class="menu-entry"
+                         style="display:flex;align-items:center;justify-content:flex-start;"
+                         href="/neuer-chat" title="Neuer Chat">
+                    <!-- NavLink: nutzt Active-Klassen via Routing -->
+                    <span class="menu-icon"
+                          style="flex:0 0 40px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06);border-radius:6px;"></span>
+                    <span class="menu-label">Neuer Chat</span>
+                </NavLink>
+                <NavLink class="menu-entry"
+                         style="display:flex;align-items:center;justify-content:flex-start;"
+                         href="/kalender" title="Kalender">
+                    <span class="menu-icon"
+                          style="flex:0 0 40px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06);border-radius:6px;" aria-hidden="true"></span>
+                    <span class="menu-label">Kalender</span>
+                </NavLink>
+                <NavLink class="menu-entry"
+                         style="display:flex;align-items:center;justify-content:flex-start;"
+                         href="/daten" title="Daten">
+                    <span class="menu-icon"
+                          style="flex:0 0 40px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06);border-radius:6px;" aria-hidden="true"></span>
+                    <span class="menu-label">Daten</span>
+                </NavLink>
+            </div>
+
+            @* Chats-Abschnitt: später austauschbar gegen komponentisierte Liste / Virtualisierung *@
+            <section class="chats-section">
+                <h2>Chats</h2>
+                <ul class="recent-chats">
+                    @foreach (var chat in RecentChats)
+                    {
+                        <li class="chat-item">@chat</li>
+                        <!-- Eintrag aus transienter Demo-Liste -->
+                    }
+                </ul>
+            </section>
+        </nav>
+    </div>
+
+    <main>
+        <!-- Rendert die aktuell geroutete Page über @Body -->
+        @Body
+    </main>
+
+    <footer>
+        <p>KIDT Project</p>
+    </footer>
+</div>
+
+@code {
+    private bool isNavCollapsed = false; // UI-State: steuert Sidebar Klassen + ARIA-Werte
+
+    private List<string> RecentChats { get; } = new() // Platzhalter-Daten; durch Datenquelle (z.B. DI-Service) ersetzbar
+    {
+        "Anna — gestern",
+        "Max — Heute 09:12",
+        "Team — Mi"
+    };
+
+    private void ToggleNav() => isNavCollapsed = !isNavCollapsed; // Einfacher State-Toggle; bei Erweiterung evtl. Animation/Callback
+}
