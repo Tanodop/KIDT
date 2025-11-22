@@ -9,9 +9,9 @@
             <div class="msg">@m</div>
         }
     </div>
-    <!-- Eingabebox: Start bei 7cm, nach erster Nachricht animiert zu 15cm -->
-    <!-- top-Wert ändern für Position (Start/Ziel über moved) -->
-    <div class="chat-input-wrapper" style=@($"top:{(moved ? "15cm" : "7cm")}")>
+    <!-- Eingabebox: responsive Start-/Zielposition statt cm -->
+    <!-- POSITION: Werte in clamp() anpassen für Start/Zielhöhe -->
+    <div class="chat-input-wrapper" style="@($"top:{(moved ? "clamp(350px,50vh,480px)" : "clamp(150px,25vh,280px)")}")">
         <textarea id="chatInput"
                   class="chat-input"
                   placeholder="Nachricht eingeben..."
@@ -22,44 +22,51 @@
 </div>
 
 @code {
-    private List<string> messages = new();          // Nachrichtenspeicher
+    private List<string> messages = new();          // Nachrichtenliste
     private string? currentText;                    // Aktueller Eingabetext
-    private bool moved = false;                     // false: oben (7cm) / true: unten (15cm)
+    private bool moved = false;                     // Umschalten Start/Zielposition
 
     private void HandleKeyDown(KeyboardEventArgs e) // Tastendruck prüfen
     {
-        if (e.Key == "Enter")                      // Enter löst Senden aus
+        if (e.Key == "Enter")                       // Enter löst Senden aus
         {
             Send();
         }
     }
 
-    private void Send()                             // Nachricht übertragen
+    private void Send()                            // Nachricht senden
     {
-        var txt = currentText?.Trim();              // Trim für sauberen Text
-        if (string.IsNullOrEmpty(txt)) return;      // Leer -> abbrechen
-        messages.Add(txt);                          // Liste ergänzen
-        if (!moved) moved = true;                   // Erste Nachricht -> Position nach unten (15cm)
-        currentText = string.Empty;                 // Eingabe zurücksetzen
+        var txt = currentText?.Trim();             // Trim für sauberen Text
+        if (string.IsNullOrEmpty(txt)) return;     // Leer -> Abbruch
+        messages.Add(txt);                         // Liste erweitern
+        if (!moved) moved = true;                  // Erste Nachricht -> Position ändern
+        currentText = string.Empty;                // Eingabe zurücksetzen
+        StateHasChanged();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        await JS.InvokeVoidAsync("resizeTextarea", "chatInput"); // Höhe anpassen
+        await JS.InvokeVoidAsync("resizeTextarea", "chatInput"); // Textarea anpassen (Höhe)
     }
 
-    [Inject] private IJSRuntime JS { get; set; } = default!; // JS Bridge
+    [Inject] private IJSRuntime JS { get; set; } = default!; // JS-Interop
 }
 
 <script>
-    // Höhe der Textarea bis maxH dynamisch
     window.resizeTextarea = function(id){
         const ta = document.getElementById(id);
         if(!ta) return;
-        const maxH = 240; // max Höhe vor Scrollbar
+        const maxH = 240; // Max-Höhe vor Scrollbar
+        const minH = 50;  // Min-Höhe Basis
         ta.style.height = 'auto';
-        const needed = ta.scrollHeight;
-        ta.style.height = (needed > maxH ? maxH : needed) + 'px';
+        let needed = ta.scrollHeight;
+        if (needed > maxH) needed = maxH;
+        ta.style.height = needed + 'px';
+        const grow = Math.max(0, needed - minH); // Differenz für nach-oben-Verschiebung
+        const wrapper = ta.closest('.chat-input-wrapper');
+        if(wrapper){
+            wrapper.style.setProperty('--grow-offset', grow + 'px'); // OFFSET: Wachstum nach oben
+        }
     };
     // Eingabe -> Höhe neu berechnen
     document.addEventListener('input', (e)=>{
@@ -77,22 +84,22 @@
 
 <style>
     .chat-area {
-        max-width: 800px; /* Breite ändern */
-        margin: 0 auto; /* Zentrierung */
-        padding: 1rem; /* Innenabstand */
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 1rem;
         display: flex;
         flex-direction: column;
         gap: 0.75rem; /* Abstand Elemente */
-        position: relative; /* Bezug für absolute Eingabebox */
+        position: relative;
         box-sizing: border-box;
         min-height: 100%;
-        padding-bottom: 300px; /* Platz unten für Box (anpassen bei Positionsänderung) */
+        padding-bottom: 300px; /* Reserve unten bei großer Eingabe */
     }
 
     .messages {
         display: flex;
         flex-direction: column;
-        gap: 0.5rem; /* Abstand zw. Nachrichten */
+        gap: 0.5rem; /* Abstand Nachrichten */
         width: 100%;
         align-items: flex-end;
         box-sizing: border-box;
@@ -100,8 +107,8 @@
 
     .msg {
         background: rgba(255,255,255,0.08);
-        padding: 0.5rem 0.75rem; /* Innenabstand Bubble */
-        border-radius: 12px; /* Rundung Bubble */
+        padding: 0.5rem 0.75rem;
+        border-radius: 12px;
         white-space: pre-wrap;
         display: inline-block;
         max-width: 75%; /* max Breite Nachricht */
@@ -110,33 +117,36 @@
         margin-right: 0;
         box-sizing: border-box;
         text-align: left;
+        font-size: 20px; /* Schriftgröße Nachrichten */
     }
 
     .chat-input-wrapper {
+        --grow-offset: 0px; /* Dynamisch: durch JS gesetzt */
         width: 100%;
         border-radius: 14px;
         background: rgba(255,255,255,0.06);
         border: 1px solid rgba(255,255,255,0.25);
         box-sizing: border-box;
-        position: absolute; /* Fixiert innerhalb Container */
+        position: absolute;
         left: 0;
         right: 0;
-        padding: 0 0.6rem 0 0; /* Platz rechts für Scrollbar */
-        overflow: hidden;
-        z-index: 1; /* Vor Nachrichten */
-        transition: top 0.6s ease; /* Animationsdauer/-kurve (ändern für anderes Verhalten) */
+        padding: 0 0.6rem 0 0;
+        overflow: visible; /* erlaubt Wachstum nach oben */
+        z-index: 1;
+        transition: top 0.6s ease; /* Animation Positionswechsel */
+        transform: translateY(calc(-1 * var(--grow-offset))); /* Nach-oben-Verschiebung */
     }
 
     textarea.chat-input {
         display: block;
         width: 100%;
-        min-height: 50px; /* Mindesthöhe */
-        max-height: 240px; /* Max Höhe vor Scroll (wie in JS) */
+        min-height: 50px; /* Min-Höhe Eingabe (JS minH) */
+        max-height: 240px; /* Max-Höhe vor Scroll (JS maxH) */
         overflow-y: auto;
-        resize: none; /* Manuelles Resizing verhindern */
-        padding: 0.35rem 0.9rem 0.30rem 0.75rem; /* Innenabstand Textfeld */
-        font-size: 1.08rem;
-        line-height: 1.3; /* Textgröße & Zeilenhöhe */
+        resize: none;
+        padding: 0.35rem 0.9rem 0.30rem 0.75rem; /* Innenabstand */
+        font-size: 20px; /* Schriftgröße Eingabe */
+        line-height: 1.3; /* Zeilenhöhe */
         background: transparent;
         color: #fff;
         border: none;
@@ -147,15 +157,15 @@
     }
 
     .chat-input-wrapper:focus-within {
-        box-shadow: 0 0 0 2px rgba(37,140,251,0.35);
+        box-shadow: 0 0 0 2px rgba(37,140,251,0.35); /* Fokus-Rand */
         border-color: #258cfb;
     }
 
-    /* Scrollbar (WebKit) Styling */
+    /* Scrollbar Styling */
     textarea.chat-input::-webkit-scrollbar {
-        width: 8px; /* Breite Scrollbar */
+        width: 8px;
     }
-
+    /* Breite Scrollbar */
     textarea.chat-input::-webkit-scrollbar-track {
         background: transparent;
         margin: 6px 0;
