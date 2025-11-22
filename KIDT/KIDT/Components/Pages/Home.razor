@@ -1,16 +1,17 @@
-﻿@* Zweck (kurz): Oberfläche für einfache Chat-Eingabe. *@
+﻿@* Zweck: Chat-Eingabe *@
 @page "/"
 
 <div class="chat-area">
-    <!-- Liste der gesendeten Nachrichten -->
+    <!-- Nachrichten oben; Abstand nach unten entsteht durch Position der Eingabebox -->
     <div class="messages">
         @foreach (var m in messages)
         {
             <div class="msg">@m</div>
         }
     </div>
-    <!-- Wrapper für Textarea (rundet ab, kontrolliert Scrollbar) -->
-    <div class="chat-input-wrapper">
+    <!-- Eingabebox: Start bei 7cm, nach erster Nachricht animiert zu 15cm -->
+    <!-- top-Wert ändern für Position (Start/Ziel über moved) -->
+    <div class="chat-input-wrapper" style=@($"top:{(moved ? "15cm" : "7cm")}")>
         <textarea id="chatInput"
                   class="chat-input"
                   placeholder="Nachricht eingeben..."
@@ -21,50 +22,52 @@
 </div>
 
 @code {
-    private List<string> messages = new(); // Sammlung der gesendeten Texte
-    private string? currentText;            // Aktueller Eingabetext
+    private List<string> messages = new();          // Nachrichtenspeicher
+    private string? currentText;                    // Aktueller Eingabetext
+    private bool moved = false;                     // false: oben (7cm) / true: unten (15cm)
 
-    private void HandleKeyDown(KeyboardEventArgs e)
+    private void HandleKeyDown(KeyboardEventArgs e) // Tastendruck prüfen
     {
-        if (e.Key == "Enter") // Enter -> Senden
+        if (e.Key == "Enter")                      // Enter löst Senden aus
         {
             Send();
         }
     }
 
-    private void Send()
+    private void Send()                             // Nachricht übertragen
     {
-        var txt = currentText?.Trim();
-        if (string.IsNullOrEmpty(txt)) return; // nichts senden wenn leer
-        messages.Add(txt);                     // zur Liste hinzufügen
-        currentText = string.Empty;            // Eingabe leeren
+        var txt = currentText?.Trim();              // Trim für sauberen Text
+        if (string.IsNullOrEmpty(txt)) return;      // Leer -> abbrechen
+        messages.Add(txt);                          // Liste ergänzen
+        if (!moved) moved = true;                   // Erste Nachricht -> Position nach unten (15cm)
+        currentText = string.Empty;                 // Eingabe zurücksetzen
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        await JS.InvokeVoidAsync("resizeTextarea", "chatInput"); // Höhe nach Render anpassen
+        await JS.InvokeVoidAsync("resizeTextarea", "chatInput"); // Höhe anpassen
     }
 
     [Inject] private IJSRuntime JS { get; set; } = default!; // JS Bridge
 }
 
 <script>
-    // Passt Höhe der Textarea dynamisch bis zu einer Maximalhöhe an
+    // Höhe der Textarea bis maxH dynamisch
     window.resizeTextarea = function(id){
         const ta = document.getElementById(id);
         if(!ta) return;
-        const maxH = 240; // maximale Höhe bevor Scrollbar erscheint
+        const maxH = 240; // max Höhe vor Scrollbar
         ta.style.height = 'auto';
         const needed = ta.scrollHeight;
         ta.style.height = (needed > maxH ? maxH : needed) + 'px';
     };
-    // Bei Texteingabe Höhe neu berechnen
+    // Eingabe -> Höhe neu berechnen
     document.addEventListener('input', (e)=>{
         if(e.target && e.target.id === 'chatInput'){
             window.resizeTextarea('chatInput');
         }
     });
-    // Enter verhindert neue Zeile und triggert Senden (im C# Handler)
+    // Enter verhindert Zeilenumbruch
     document.addEventListener('keydown', (e)=>{
         if(e.target && e.target.id === 'chatInput' && e.key === 'Enter'){
             e.preventDefault();
@@ -74,61 +77,101 @@
 
 <style>
     .chat-area {
-        max-width: 800px;
-        margin: 1rem auto 0;
-        padding: 1rem;
+        max-width: 800px; /* Breite ändern */
+        margin: 0 auto; /* Zentrierung */
+        padding: 1rem; /* Innenabstand */
         display: flex;
         flex-direction: column;
-        gap: 0.75rem;
+        gap: 0.75rem; /* Abstand Elemente */
+        position: relative; /* Bezug für absolute Eingabebox */
+        box-sizing: border-box;
+        min-height: 100%;
+        padding-bottom: 300px; /* Platz unten für Box (anpassen bei Positionsänderung) */
     }
-    .messages { display:flex; flex-direction:column; gap:0.5rem; width:100%; align-items:flex-end; }
+
+    .messages {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem; /* Abstand zw. Nachrichten */
+        width: 100%;
+        align-items: flex-end;
+        box-sizing: border-box;
+    }
+
     .msg {
         background: rgba(255,255,255,0.08);
-        padding: 0.5rem 0.75rem;
-        border-radius: 12px;
+        padding: 0.5rem 0.75rem; /* Innenabstand Bubble */
+        border-radius: 12px; /* Rundung Bubble */
         white-space: pre-wrap;
         display: inline-block;
-        max-width: 75%;
+        max-width: 75%; /* max Breite Nachricht */
         width: fit-content;
-        word-break: break-word;
-        margin-right:0;
+        word-break: break-word; /* Zeilenumbruch innerhalb Worte */
+        margin-right: 0;
         box-sizing: border-box;
         text-align: left;
     }
+
     .chat-input-wrapper {
-        width:100%;
-        border-radius:14px;
+        width: 100%;
+        border-radius: 14px;
         background: rgba(255,255,255,0.06);
-        border:1px solid rgba(255,255,255,0.25);
-        box-sizing:border-box;
-        margin-top:1rem;
-        padding:0 0.6rem 0 0; /* verschiebt Scrollbar etwas nach innen */
-        overflow:hidden; /* schneidet Scroll-Enden sauber ab */
+        border: 1px solid rgba(255,255,255,0.25);
+        box-sizing: border-box;
+        position: absolute; /* Fixiert innerhalb Container */
+        left: 0;
+        right: 0;
+        padding: 0 0.6rem 0 0; /* Platz rechts für Scrollbar */
+        overflow: hidden;
+        z-index: 1; /* Vor Nachrichten */
+        transition: top 0.6s ease; /* Animationsdauer/-kurve (ändern für anderes Verhalten) */
     }
+
     textarea.chat-input {
-        display:block;
-        width:100%;
-        min-height:50px;
-        max-height:240px; /* danach Scrollbar */
-        overflow-y:auto;
-        resize:none;
-        padding:0.35rem 0.9rem 0.30rem 0.75rem; /* rechts Freiraum vor Scrollbar */
-        font-size:1.08rem;
-        line-height:1.3;
-        background:transparent; /* Farbe kommt vom Wrapper */
-        color:#fff;
-        border:none;
-        outline:none;
-        box-sizing:border-box;
-        scrollbar-color: rgba(255,255,255,0.35) transparent; /* Firefox Stil */
+        display: block;
+        width: 100%;
+        min-height: 50px; /* Mindesthöhe */
+        max-height: 240px; /* Max Höhe vor Scroll (wie in JS) */
+        overflow-y: auto;
+        resize: none; /* Manuelles Resizing verhindern */
+        padding: 0.35rem 0.9rem 0.30rem 0.75rem; /* Innenabstand Textfeld */
+        font-size: 1.08rem;
+        line-height: 1.3; /* Textgröße & Zeilenhöhe */
+        background: transparent;
+        color: #fff;
+        border: none;
+        outline: none;
+        box-sizing: border-box;
+        scrollbar-color: rgba(255,255,255,0.35) transparent;
         scrollbar-width: thin;
     }
-    .chat-input-wrapper:focus-within { box-shadow:0 0 0 2px rgba(37,140,251,0.35); border-color:#258cfb; }
 
-    /* Scrollbar (WebKit) kompakt & passend zum Design */
-    textarea.chat-input::-webkit-scrollbar { width:8px; }
-    textarea.chat-input::-webkit-scrollbar-track { background:transparent; margin:6px 0; }
-    textarea.chat-input::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.30); border-radius:8px; }
-    textarea.chat-input::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.40); }
-    textarea.chat-input::-webkit-scrollbar-button { height:0; display:none; }
+    .chat-input-wrapper:focus-within {
+        box-shadow: 0 0 0 2px rgba(37,140,251,0.35);
+        border-color: #258cfb;
+    }
+
+    /* Scrollbar (WebKit) Styling */
+    textarea.chat-input::-webkit-scrollbar {
+        width: 8px; /* Breite Scrollbar */
+    }
+
+    textarea.chat-input::-webkit-scrollbar-track {
+        background: transparent;
+        margin: 6px 0;
+    }
+
+    textarea.chat-input::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,0.30);
+        border-radius: 8px;
+    }
+
+        textarea.chat-input::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.40);
+        }
+
+    textarea.chat-input::-webkit-scrollbar-button {
+        height: 0;
+        display: none;
+    }
 </style>
