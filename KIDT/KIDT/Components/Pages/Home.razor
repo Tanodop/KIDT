@@ -1,1 +1,12 @@
-﻿@page "/"         
+﻿@* Zweck:
+
+- Diese Datei bildet die Oberfläche ab und enthält die Bindings zu den Daten.
+- Enthalten sind typische Elemente wie Eingabefelder, Datei-Upload, Buttons und die Ausgabe von Analyseergebnissen.
+- Aufwendige Logik gehört nicht hierher: komplexe Funktionen (KI, Datenbank, Kalender-API, MCP) liegen in Services wie IDocumentAnalyzer oder ICalendarService
+- Services werden mit @inject eingebunden; umfangreichere Abläufe kommen ins Code-Behind (.razor.cs).
+- Die MCP-Anbindung läuft über Services oder einen eigenen MCP-Controller, nicht direkt im Razor-Markup.
+- Beispiel: Die UI startet eine Analyse, ruft den DocumentAnalyzer auf, und dessen Ergebnis kann danach einen MCP-Aufruf auslösen. 
+
+*@<!-- Diese Namen sind die Links, die als NavLinks hinzugefügt werden-->
+@page "/"
+@inject IJSRuntime JS

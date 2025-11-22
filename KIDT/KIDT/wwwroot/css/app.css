@@ -1,4 +1,9 @@
-﻿/*#if (SampleContent)*/
+﻿html{
+    background-color: #0f1a2e;
+    color: white;
+}
+
+/*#if (SampleContent)*/
 html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
