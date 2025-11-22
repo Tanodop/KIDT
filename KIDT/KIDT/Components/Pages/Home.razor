@@ -1,12 +1,134 @@
-﻿@* Zweck:
-
-- Diese Datei bildet die Oberfläche ab und enthält die Bindings zu den Daten.
-- Enthalten sind typische Elemente wie Eingabefelder, Datei-Upload, Buttons und die Ausgabe von Analyseergebnissen.
-- Aufwendige Logik gehört nicht hierher: komplexe Funktionen (KI, Datenbank, Kalender-API, MCP) liegen in Services wie IDocumentAnalyzer oder ICalendarService
-- Services werden mit @inject eingebunden; umfangreichere Abläufe kommen ins Code-Behind (.razor.cs).
-- Die MCP-Anbindung läuft über Services oder einen eigenen MCP-Controller, nicht direkt im Razor-Markup.
-- Beispiel: Die UI startet eine Analyse, ruft den DocumentAnalyzer auf, und dessen Ergebnis kann danach einen MCP-Aufruf auslösen. 
-
-*@<!-- Diese Namen sind die Links, die als NavLinks hinzugefügt werden-->
+﻿@* Zweck (kurz): Oberfläche für einfache Chat-Eingabe. *@
 @page "/"
-@inject IJSRuntime JS
+
+<div class="chat-area">
+    <!-- Liste der gesendeten Nachrichten -->
+    <div class="messages">
+        @foreach (var m in messages)
+        {
+            <div class="msg">@m</div>
+        }
+    </div>
+    <!-- Wrapper für Textarea (rundet ab, kontrolliert Scrollbar) -->
+    <div class="chat-input-wrapper">
+        <textarea id="chatInput"
+                  class="chat-input"
+                  placeholder="Nachricht eingeben..."
+                  @bind="currentText"
+                  @bind:event="oninput"
+                  @onkeydown="HandleKeyDown"></textarea>
+    </div>
+</div>
+
+@code {
+    private List<string> messages = new(); // Sammlung der gesendeten Texte
+    private string? currentText;            // Aktueller Eingabetext
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") // Enter -> Senden
+        {
+            Send();
+        }
+    }
+
+    private void Send()
+    {
+        var txt = currentText?.Trim();
+        if (string.IsNullOrEmpty(txt)) return; // nichts senden wenn leer
+        messages.Add(txt);                     // zur Liste hinzufügen
+        currentText = string.Empty;            // Eingabe leeren
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await JS.InvokeVoidAsync("resizeTextarea", "chatInput"); // Höhe nach Render anpassen
+    }
+
+    [Inject] private IJSRuntime JS { get; set; } = default!; // JS Bridge
+}
+
+<script>
+    // Passt Höhe der Textarea dynamisch bis zu einer Maximalhöhe an
+    window.resizeTextarea = function(id){
+        const ta = document.getElementById(id);
+        if(!ta) return;
+        const maxH = 240; // maximale Höhe bevor Scrollbar erscheint
+        ta.style.height = 'auto';
+        const needed = ta.scrollHeight;
+        ta.style.height = (needed > maxH ? maxH : needed) + 'px';
+    };
+    // Bei Texteingabe Höhe neu berechnen
+    document.addEventListener('input', (e)=>{
+        if(e.target && e.target.id === 'chatInput'){
+            window.resizeTextarea('chatInput');
+        }
+    });
+    // Enter verhindert neue Zeile und triggert Senden (im C# Handler)
+    document.addEventListener('keydown', (e)=>{
+        if(e.target && e.target.id === 'chatInput' && e.key === 'Enter'){
+            e.preventDefault();
+        }
+    });
+</script>
+
+<style>
+    .chat-area {
+        max-width: 800px;
+        margin: 1rem auto 0;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    .messages { display:flex; flex-direction:column; gap:0.5rem; width:100%; align-items:flex-end; }
+    .msg {
+        background: rgba(255,255,255,0.08);
+        padding: 0.5rem 0.75rem;
+        border-radius: 12px;
+        white-space: pre-wrap;
+        display: inline-block;
+        max-width: 75%;
+        width: fit-content;
+        word-break: break-word;
+        margin-right:0;
+        box-sizing: border-box;
+        text-align: left;
+    }
+    .chat-input-wrapper {
+        width:100%;
+        border-radius:14px;
+        background: rgba(255,255,255,0.06);
+        border:1px solid rgba(255,255,255,0.25);
+        box-sizing:border-box;
+        margin-top:1rem;
+        padding:0 0.6rem 0 0; /* verschiebt Scrollbar etwas nach innen */
+        overflow:hidden; /* schneidet Scroll-Enden sauber ab */
+    }
+    textarea.chat-input {
+        display:block;
+        width:100%;
+        min-height:50px;
+        max-height:240px; /* danach Scrollbar */
+        overflow-y:auto;
+        resize:none;
+        padding:0.35rem 0.9rem 0.30rem 0.75rem; /* rechts Freiraum vor Scrollbar */
+        font-size:1.08rem;
+        line-height:1.3;
+        background:transparent; /* Farbe kommt vom Wrapper */
+        color:#fff;
+        border:none;
+        outline:none;
+        box-sizing:border-box;
+        scrollbar-color: rgba(255,255,255,0.35) transparent; /* Firefox Stil */
+        scrollbar-width: thin;
+    }
+    .chat-input-wrapper:focus-within { box-shadow:0 0 0 2px rgba(37,140,251,0.35); border-color:#258cfb; }
+
+    /* Scrollbar (WebKit) kompakt & passend zum Design */
+    textarea.chat-input::-webkit-scrollbar { width:8px; }
+    textarea.chat-input::-webkit-scrollbar-track { background:transparent; margin:6px 0; }
+    textarea.chat-input::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.30); border-radius:8px; }
+    textarea.chat-input::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.40); }
+    textarea.chat-input::-webkit-scrollbar-button { height:0; display:none; }
+</style>
